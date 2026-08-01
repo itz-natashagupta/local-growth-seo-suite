@@ -1,0 +1,19 @@
+# Python virtual environment
+venv/
+ENV/
+env/
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Application generated outputs
+output/*.xlsx
+!output/.gitkeep
+
+# IDE & OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

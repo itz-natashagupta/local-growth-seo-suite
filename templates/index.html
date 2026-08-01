@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Local Growth & SEO Suite | Elenco Corporation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <!-- Top Accent Bar -->
+  <div class="top-bar"></div>
+
+  <div class="page-wrapper">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="currentColor"/>
+          <circle cx="12" cy="9" r="2.5" fill="white"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="app-title">Local Growth & SEO Suite</h1>
+        <p class="app-subtitle">All-In-One Enterprise Platform for Lead Generation & Local SEO Audits</p>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button id="tabBtnScraper" class="tab-btn active" onclick="switchTab('scraper')">
+        📍 1. Google Maps Lead Scraper
+      </button>
+      <button id="tabBtnSeo" class="tab-btn" onclick="switchTab('seo')">
+        📊 2. Local SEO & Competitor Analyzer
+      </button>
+    </nav>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 1: GOOGLE MAPS LEAD SCRAPER -->
+    <!-- ========================================================================= -->
+    <div id="tabScraper" class="tab-content active">
+      <main class="main-content">
+        <!-- Form Panel -->
+        <section class="card form-card">
+          <div class="section-label">📍 SEARCH PARAMETERS</div>
+
+          <div class="form-group">
+            <label for="scCategory">Business Category *</label>
+            <input id="scCategory" type="text" placeholder="e.g. Dentist, Skin Clinic, Restaurant" />
+          </div>
+
+          <div class="form-group">
+            <label for="scCity">City / Location *</label>
+            <input id="scCity" type="text" placeholder="e.g. Pune, Baner, Mumbai" />
+          </div>
+
+          <div class="form-group">
+            <label for="scMax">Max Results to Scrape</label>
+            <input id="scMax" type="text" placeholder="e.g. 50 (or type 'all')" />
+          </div>
+
+          <div class="form-checkbox">
+            <input id="scNoWeb" type="checkbox" />
+            <label for="scNoWeb"><strong>Filter:</strong> Only scrape businesses WITHOUT a website</label>
+          </div>
+
+          <button id="scBtn" class="btn-primary" onclick="startScrape()">
+            🚀 Start Scraping Leads
+          </button>
+
+          <button id="scDownloadBtn" class="btn-download" style="display:none" onclick="downloadScrapeReport()">
+            📥 Download Leads Excel (.xlsx)
+          </button>
+        </section>
+
+        <!-- Live Log Panel -->
+        <section class="card log-card">
+          <div class="section-label">📡 SCRAPER LIVE LOG</div>
+          <div id="scLogBox" class="log-box">
+            <span class="log-idle">Waiting for input… Enter parameters and click Start Scraping Leads.</span>
+          </div>
+        </section>
+      </main>
+
+      <!-- Scraped Leads Results Table Section -->
+      <section class="card comparison-card" id="scLeadsCard" style="display:none;margin-top:24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:12px;">
+          <div class="section-label" style="margin-bottom:0;">📍 SCRAPED LEADS RESULTS (<span id="scLeadsCount">0</span> Leads Found)</div>
+          <button class="btn-download" style="width:auto;padding:8px 18px;margin-top:0;" onclick="downloadScrapeReport()">
+            📥 Download Leads Excel (.xlsx)
+          </button>
+        </div>
+        <div class="table-wrapper" style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;" id="scLeadsTable">
+            <thead>
+              <tr style="background:#006D77;color:white;">
+                <th style="padding:10px;text-align:center;width:40px;">#</th>
+                <th style="padding:10px;text-align:left;">Business Name</th>
+                <th style="padding:10px;text-align:center;">Rating</th>
+                <th style="padding:10px;text-align:center;">Reviews</th>
+                <th style="padding:10px;text-align:left;">Phone Number</th>
+                <th style="padding:10px;text-align:left;">Address</th>
+                <th style="padding:10px;text-align:left;">Website</th>
+                <th style="padding:10px;text-align:center;">Maps Link</th>
+              </tr>
+            </thead>
+            <tbody id="scLeadsBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- TAB 2: LOCAL SEO & COMPETITOR ANALYZER -->
+    <!-- ========================================================================= -->
+    <div id="tabSeo" class="tab-content">
+      <main class="main-content">
+        <!-- Form Panel -->
+        <section class="card form-card">
+          <div class="section-label">🔍 CLIENT BUSINESS DETAILS</div>
+
+          <div class="form-group">
+            <label for="seoBusinessName">Client Business Name *</label>
+            <input id="seoBusinessName" type="text" placeholder="e.g. Ruby Hall Clinic" />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="seoCategory">Category *</label>
+              <input id="seoCategory" type="text" placeholder="e.g. Hospital" />
+            </div>
+            <div class="form-group">
+              <label for="seoLocation">Location *</label>
+              <input id="seoLocation" type="text" placeholder="e.g. Pune" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="seoWebsiteUrl">Client Website URL <span class="optional">(optional)</span></label>
+            <input id="seoWebsiteUrl" type="text" placeholder="e.g. https://rubyhall.com" />
+          </div>
+
+          <div class="section-label" style="margin-top:16px;margin-bottom:10px;">⚔️ COMPETITOR COMPARISON <span class="optional">(OPTIONAL)</span></div>
+
+          <div class="form-group">
+            <label for="seoCompName">Competitor Business Name</label>
+            <input id="seoCompName" type="text" placeholder="e.g. Jehangir Hospital" />
+          </div>
+
+          <div class="form-group">
+            <label for="seoCompUrl">Competitor Website URL</label>
+            <input id="seoCompUrl" type="text" placeholder="e.g. http://www.jehangirhospital.com/" />
+          </div>
+
+          <button id="seoBtn" class="btn-primary" onclick="startSeoAnalysis()">
+            🔍 Analyze & Compare
+          </button>
+
+          <!-- Score Chips -->
+          <div class="stats-strip" id="statsStrip" style="display:none;margin-top:16px;">
+            <div class="stat-chip">
+              <div class="stat-value" id="gbpScore">—</div>
+              <div class="stat-label">GBP Score<br><span style="font-size:9px;opacity:.7">/ 30</span></div>
+            </div>
+            <div class="stat-chip">
+              <div class="stat-value" id="webScore">—</div>
+              <div class="stat-label">Website SEO<br><span style="font-size:9px;opacity:.7">/ 40</span></div>
+            </div>
+            <div class="stat-chip">
+              <div class="stat-value" id="localScore">—</div>
+              <div class="stat-label">Local SEO<br><span style="font-size:9px;opacity:.7">/ 30</span></div>
+            </div>
+            <div class="stat-chip stat-chip-total">
+              <div class="stat-value" id="totalScore">—</div>
+              <div class="stat-label">Overall<br><span style="font-size:9px;opacity:.7">/ 100</span></div>
+            </div>
+          </div>
+
+          <button id="seoDownloadBtn" class="btn-download" style="display:none;margin-top:14px;" onclick="downloadSeoReport()">
+            📥 Download SEO Excel Report
+          </button>
+        </section>
+
+        <!-- Live Log Panel -->
+        <section class="card log-card">
+          <div class="section-label">📡 SEO ANALYSIS LIVE LOG</div>
+          <div id="seoLogBox" class="log-box">
+            <span class="log-idle">Waiting for input… Enter business details and click Analyze & Compare.</span>
+          </div>
+        </section>
+      </main>
+
+      <!-- Competitor Comparison Section -->
+      <section class="card comparison-card" id="comparisonCard" style="display:none;margin-top:24px;">
+        <div class="section-label">⚔️ COMPETITOR COMPARISON & ACTIONABLE INSIGHTS</div>
+        <div id="comparisonContainer"></div>
+      </section>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
