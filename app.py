@@ -45,6 +45,8 @@ def start_scrape():
     city            = (data.get("city") or "").strip()
     max_results_raw = (data.get("max_results") or "50").strip().lower()
     only_no_website = bool(data.get("only_no_website", False))
+    only_24_7       = bool(data.get("only_24_7", False))
+    only_hot_leads  = bool(data.get("only_hot_leads", False))
 
     if not category or not city:
         return jsonify({"error": "Category and City are required fields."}), 400
@@ -67,7 +69,9 @@ def start_scrape():
             leads = scrape_google_maps(
                 category, city, max_results,
                 progress_callback=lambda m: _scrape_q.put(m),
-                only_no_website=only_no_website
+                only_no_website=only_no_website,
+                only_24_7=only_24_7,
+                only_hot_leads=only_hot_leads
             )
             if leads:
                 filepath = export_leads(leads, category, city)
@@ -89,6 +93,29 @@ def start_scrape():
 @app.route("/api/leads_data")
 def leads_data():
     return jsonify({"leads": _latest_scraped_leads, "filepath": _scrape_file})
+
+
+@app.route("/api/lead_detail/<int:idx>")
+def lead_detail(idx):
+    if idx < 0 or idx >= len(_latest_scraped_leads):
+        return jsonify({"error": "Lead index out of range"}), 404
+    lead = _latest_scraped_leads[idx]
+    return jsonify({
+        "name":          lead.get("Business Name", ""),
+        "tier":          lead.get("Tier", ""),
+        "badge":         lead.get("Conversion Score", ""),
+        "all_pains":     lead.get("All Pain Points", ""),
+        "best_call":     lead.get("Best Call Window", ""),
+        "pitch":         lead.get("Cold Call Pitch Script", ""),
+        "whatsapp":      lead.get("WhatsApp Message", ""),
+        "email_subject": lead.get("Email Subject", ""),
+        "email_body":    lead.get("Follow-Up Email", ""),
+        "phone":         lead.get("Phone Number", ""),
+        "rating":        lead.get("Rating", ""),
+        "reviews":       lead.get("Number of Reviews", ""),
+        "website":       lead.get("Website", ""),
+        "address":       lead.get("Address", ""),
+    })
 
 
 @app.route("/api/progress/scrape")

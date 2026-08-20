@@ -796,6 +796,89 @@ def export_to_excel(business_name: str, location: str,
     return filepath
 
 
+def discover_top_competitor(category: str, location: str, client_name: str, progress_callback=None) -> tuple:
+    def emit(msg):
+        if progress_callback: progress_callback(msg)
+        else: print(msg)
+
+    search_query = f"{category} in {location}"
+    search_url = f"https://www.google.com/maps/search/{search_query.replace(' ', '+')}"
+    emit(f"[AUTO-DISCOVERY] 🔍 Searching Google Maps for top local competitor: '{search_query}'...")
+
+    comp_name = ""
+    comp_url = ""
+
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=HEADLESS,
+                args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-blink-features=AutomationControlled"]
+            )
+            ctx = browser.new_context(viewport={"width": 1280, "height": 900}, user_agent=HEADERS["User-Agent"], locale="en-US")
+            page = ctx.new_page()
+            page.goto(search_url, wait_until="domcontentloaded", timeout=60000)
+            time.sleep(3)
+
+            try:
+                for txt in ["Accept all", "Reject all", "I agree"]:
+                    btn = page.locator(f'button:has-text("{txt}")')
+                    if btn.count() > 0:
+                        btn.first.click()
+                        break
+            except Exception:
+                pass
+
+            try:
+                page.wait_for_selector('a.hfpxzc', timeout=12000)
+            except Exception:
+                browser.close()
+                return "", ""
+
+            cards = page.locator('a.hfpxzc').all()
+            client_clean = client_name.lower().strip()
+
+            for card in cards:
+                try:
+                    aria = (card.get_attribute("aria-label") or "").strip()
+                    if not aria:
+                        continue
+
+                    # Skip if this card belongs to the client itself
+                    if client_clean and (client_clean in aria.lower() or aria.lower() in client_clean):
+                        continue
+
+                    comp_name = aria
+                    href = card.get_attribute("href") or ""
+
+                    if href:
+                        page.goto(href, wait_until="domcontentloaded", timeout=30000)
+                        time.sleep(2)
+                        website_el = page.locator('[data-item-id="authority"] a, [aria-label^="Website:"] a')
+                        if website_el.count() > 0:
+                            comp_url = website_el.first.get_attribute("href") or ""
+                        if not comp_url:
+                            web_text = page.locator('[data-item-id="authority"] .Io6YTe')
+                            if web_text.count() > 0:
+                                comp_url = web_text.first.inner_text().strip()
+                        if comp_url and not comp_url.startswith("http"):
+                            comp_url = "https://" + comp_url
+                    break
+                except Exception:
+                    continue
+
+            browser.close()
+
+    except Exception as e:
+        emit(f"  [WARN] Auto-competitor discovery warning: {e}")
+
+    if comp_name:
+        emit(f"[AUTO-DISCOVERY] 🎯 Discovered top competitor: '{comp_name}' | Website: '{comp_url or 'N/A'}'")
+    else:
+        emit(f"[AUTO-DISCOVERY] ⚠️ Could not auto-discover competitor for '{category} in {location}'.")
+
+    return comp_name, comp_url
+
+
 _latest_analysis_data = {}
 
 def get_latest_analysis_data():
@@ -829,6 +912,12 @@ def run_analysis(business_name: str, category: str, location: str,
 
     c_name = competitor_name.strip()
     c_url  = competitor_url.strip()
+
+    if not c_name and not c_url:
+        emit(f"\n[AUTO-DISCOVERY] No competitor specified. Searching top local competitor on Google Maps...")
+        auto_c_name, auto_c_url = discover_top_competitor(category, location, business_name, progress_callback)
+        c_name = auto_c_name
+        c_url  = auto_c_url
 
     if c_name or c_url:
         emit(f"\n[COMPETITOR] ⚔️ Analyzing Competitor: {c_name or c_url}...")

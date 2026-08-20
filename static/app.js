@@ -21,6 +21,8 @@ function startScrape() {
   const city     = document.getElementById('scCity').value.trim();
   const maxRes   = document.getElementById('scMax').value.trim();
   const noWeb    = document.getElementById('scNoWeb').checked;
+  const only247  = document.getElementById('scOnly247').checked;
+  const onlyHot  = document.getElementById('scOnlyHot').checked;
 
   if (!category || !city) {
     alert('Please enter Business Category and City.');
@@ -38,7 +40,7 @@ function startScrape() {
   fetch('/api/scrape', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ category, city, max_results: maxRes, only_no_website: noWeb })
+    body: JSON.stringify({ category, city, max_results: maxRes, only_no_website: noWeb, only_24_7: only247, only_hot_leads: onlyHot })
   })
   .then(res => res.json())
   .then(data => {
@@ -273,23 +275,40 @@ function fetchScrapedLeadsTable() {
             : 'background:#F8D7DA;color:#721C24;padding:2px 8px;border-radius:12px;';
 
           const webLink = lead['Website'] && lead['Website'] !== 'N/A'
-            ? `<a href="${lead['Website']}" target="_blank" style="color:#006D77;text-decoration:underline;">${lead['Website'].replace(/^https?:\/\//, '').substring(0,30)}</a>`
+            ? `<a href="${lead['Website']}" target="_blank" style="color:#006D77;text-decoration:underline;">${lead['Website'].replace(/^https?:\/\//, '').substring(0,28)}</a>`
             : '<span style="color:#9CA3AF;">No Website</span>';
 
-          const mapsLink = lead['Google Maps Link'] && lead['Google Maps Link'] !== 'N/A'
-            ? `<a href="${lead['Google Maps Link']}" target="_blank" style="color:#006D77;font-weight:bold;text-decoration:none;">🗺️ View</a>`
-            : '—';
+          const intentBadge = lead['Conversion Score'] || '❄️ 60% COLD LEAD';
+          const intentBg = intentBadge.includes('🔥') || intentBadge.includes('HOT')
+            ? 'background:#FEE2E2;color:#991B1B;padding:3px 8px;border-radius:12px;font-weight:bold;font-size:11px;'
+            : (intentBadge.includes('⚡') || intentBadge.includes('WARM')
+              ? 'background:#FEF3C7;color:#92400E;padding:3px 8px;border-radius:12px;font-weight:bold;font-size:11px;'
+              : 'background:#E5E7EB;color:#374151;padding:3px 8px;border-radius:12px;font-size:11px;');
+
+          const tierBadge = lead['Tier'] || '';
+          const tierBg = tierBadge.includes('Tier A')
+            ? 'background:#FEE2E2;color:#B91C1C;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:700;'
+            : (tierBadge.includes('Tier B')
+              ? 'background:#FEF3C7;color:#92400E;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:700;'
+              : 'background:#E5E7EB;color:#374151;padding:3px 8px;border-radius:12px;font-size:10px;');
+
+          const callWin = (lead['Best Call Window'] || 'N/A').split('(')[0].trim();
+          const rowBg = intentBadge.includes('HOT') ? 'background:#FFF5F5;' : (intentBadge.includes('WARM') ? 'background:#FFFDF0;' : '');
 
           rowsHtml += `
-            <tr style="border-bottom:1px solid #E5E7EB;">
+            <tr style="border-bottom:1px solid #E5E7EB;${rowBg}cursor:pointer;transition:background 0.15s;" onmouseover="this.style.filter='brightness(0.96)'" onmouseout="this.style.filter=''" onclick="showLeadDetail(${idx})">
               <td style="padding:10px;text-align:center;font-weight:bold;color:#6B7280;">${idx + 1}</td>
               <td style="padding:10px;font-weight:600;">${lead['Business Name']}</td>
+              <td style="padding:10px;text-align:center;"><span style="${intentBg}">${intentBadge}</span></td>
+              <td style="padding:10px;text-align:center;"><span style="${tierBg}">${tierBadge}</span></td>
               <td style="padding:10px;text-align:center;"><span style="${rtgBadge}">${ratingStr}</span></td>
               <td style="padding:10px;text-align:center;">${lead['Number of Reviews'] || 'N/A'}</td>
+              <td style="padding:10px;text-align:center;font-size:11px;color:#374151;">${callWin}</td>
               <td style="padding:10px;">${lead['Phone Number'] || 'N/A'}</td>
-              <td style="padding:10px;font-size:12px;color:#4B5563;">${lead['Address'] || 'N/A'}</td>
               <td style="padding:10px;">${webLink}</td>
-              <td style="padding:10px;text-align:center;">${mapsLink}</td>
+              <td style="padding:10px;text-align:center;">
+                <button onclick="event.stopPropagation();showLeadDetail(${idx})" style="background:linear-gradient(135deg,#006D77,#004D54);color:white;border:none;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap;">💼 View Scripts</button>
+              </td>
             </tr>
           `;
         });
@@ -300,3 +319,70 @@ function fetchScrapedLeadsTable() {
       }
     });
 }
+
+// ─── Lead Detail Drawer ────────────────────────────────────────────────────────
+function showLeadDetail(idx) {
+  fetch(`/api/lead_detail/${idx}`)
+    .then(res => res.json())
+    .then(d => {
+      if (d.error) { alert(d.error); return; }
+
+      document.getElementById('drawerName').textContent  = d.name;
+      document.getElementById('drawerTier').textContent  = d.tier;
+      document.getElementById('drawerRating').textContent  = d.rating || 'N/A';
+      document.getElementById('drawerReviews').textContent = d.reviews || '0';
+      document.getElementById('drawerPhone').textContent   = d.phone || 'N/A';
+      document.getElementById('drawerCallTime').textContent = d.best_call || 'N/A';
+
+      // Badge colour
+      const badge   = d.badge || '';
+      const badgeEl = document.getElementById('drawerBadge');
+      badgeEl.textContent = badge;
+      badgeEl.style.background = badge.includes('HOT') ? 'rgba(239,68,68,0.3)'
+        : badge.includes('WARM') ? 'rgba(251,191,36,0.3)' : 'rgba(255,255,255,0.2)';
+      badgeEl.style.color = 'white';
+
+      // Pain points as bullet list
+      const pains = (d.all_pains || '').split(' | ').filter(Boolean);
+      document.getElementById('drawerPains').innerHTML = pains.map(p =>
+        `<div style="margin-bottom:4px;">⚠️ ${p}</div>`).join('') || '<div style="color:#9CA3AF;">None detected</div>';
+
+      document.getElementById('drawerPitch').textContent    = d.pitch   || 'N/A';
+      document.getElementById('drawerWhatsapp').textContent = d.whatsapp || 'N/A';
+      document.getElementById('drawerEmailSubject').textContent = d.email_subject || '';
+      document.getElementById('drawerEmail').textContent    = d.email_body || 'N/A';
+
+      // Show drawer
+      document.getElementById('leadDrawerOverlay').style.display = 'block';
+      const drawer = document.getElementById('leadDrawer');
+      drawer.style.display = 'block';
+      drawer.scrollTop = 0;
+      // Slide animation
+      drawer.style.transform = 'translateX(100%)';
+      drawer.style.transition = 'transform 0.28s cubic-bezier(0.4,0,0.2,1)';
+      requestAnimationFrame(() => { drawer.style.transform = 'translateX(0)'; });
+    });
+}
+
+function closeLeadDrawer() {
+  const drawer = document.getElementById('leadDrawer');
+  drawer.style.transform = 'translateX(100%)';
+  setTimeout(() => {
+    drawer.style.display = 'none';
+    document.getElementById('leadDrawerOverlay').style.display = 'none';
+  }, 280);
+}
+
+function copyDrawerText(elId, btnId) {
+  const text = document.getElementById(elId).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById(btnId);
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copied!';
+    btn.style.background = '#059669';
+    setTimeout(() => { btn.textContent = orig; btn.style.background = ''; }, 2000);
+  });
+}
+
+
+

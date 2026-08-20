@@ -66,6 +66,16 @@
             <label for="scNoWeb"><strong>Filter:</strong> Only scrape businesses WITHOUT a website</label>
           </div>
 
+          <div class="form-checkbox" style="margin-top:6px;">
+            <input id="scOnly247" type="checkbox" />
+            <label for="scOnly247"><strong>Filter:</strong> 🕒 Only scrape businesses open 24/7 (24 Hours)</label>
+          </div>
+
+          <div class="form-checkbox" style="margin-top:6px;">
+            <input id="scOnlyHot" type="checkbox" />
+            <label for="scOnlyHot"><strong>Filter:</strong> 🔥 Only export HOT LEADS (High cold-call conversion potential)</label>
+          </div>
+
           <button id="scBtn" class="btn-primary" onclick="startScrape()">
             🚀 Start Scraping Leads
           </button>
@@ -95,21 +105,80 @@
         <div class="table-wrapper" style="overflow-x:auto;">
           <table style="width:100%;border-collapse:collapse;font-size:13px;" id="scLeadsTable">
             <thead>
-              <tr style="background:#006D77;color:white;">
-                <th style="padding:10px;text-align:center;width:40px;">#</th>
-                <th style="padding:10px;text-align:left;">Business Name</th>
+              <tr style="background:linear-gradient(135deg,#006D77,#004D54);color:white;">
+                <th style="padding:10px;text-align:center;width:36px;">#</th>
+                <th style="padding:10px;text-align:left;min-width:160px;">Business Name</th>
+                <th style="padding:10px;text-align:center;min-width:130px;">Conversion Intent</th>
+                <th style="padding:10px;text-align:center;min-width:140px;">Tier</th>
                 <th style="padding:10px;text-align:center;">Rating</th>
                 <th style="padding:10px;text-align:center;">Reviews</th>
-                <th style="padding:10px;text-align:left;">Phone Number</th>
-                <th style="padding:10px;text-align:left;">Address</th>
+                <th style="padding:10px;text-align:center;min-width:120px;">Best Call Window</th>
+                <th style="padding:10px;text-align:left;">Phone</th>
                 <th style="padding:10px;text-align:left;">Website</th>
-                <th style="padding:10px;text-align:center;">Maps Link</th>
+                <th style="padding:10px;text-align:center;">Scripts 💼</th>
               </tr>
             </thead>
             <tbody id="scLeadsBody"></tbody>
           </table>
         </div>
       </section>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- LEAD DETAIL SLIDE-IN DRAWER                                        -->
+    <!-- ================================================================= -->
+    <div id="leadDrawerOverlay" onclick="closeLeadDrawer()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:900;"></div>
+    <div id="leadDrawer" style="display:none;position:fixed;top:0;right:0;width:min(520px,95vw);height:100vh;background:#fff;z-index:1000;overflow-y:auto;box-shadow:-6px 0 32px rgba(0,0,0,0.22);padding:0;">
+      <!-- Drawer header -->
+      <div style="background:linear-gradient(135deg,#006D77,#004D54);color:white;padding:20px 22px 16px;position:sticky;top:0;z-index:10;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <div id="drawerName" style="font-size:17px;font-weight:700;margin-bottom:4px;"></div>
+            <div id="drawerBadge" style="font-size:12px;padding:3px 10px;border-radius:20px;display:inline-block;font-weight:600;"></div>
+            <div id="drawerTier" style="font-size:11px;margin-top:6px;opacity:0.85;"></div>
+          </div>
+          <button onclick="closeLeadDrawer()" style="background:rgba(255,255,255,0.2);border:none;color:white;font-size:20px;border-radius:50%;width:34px;height:34px;cursor:pointer;line-height:34px;text-align:center;flex-shrink:0;">&times;</button>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:16px;flex-wrap:wrap;font-size:11px;opacity:0.9;">
+          <span>&#11088; <b id="drawerRating">—</b> &nbsp;(<span id="drawerReviews">0</span> reviews)</span>
+          <span>&#128222; <span id="drawerPhone">—</span></span>
+          <span>&#128336; <span id="drawerCallTime">—</span></span>
+        </div>
+      </div>
+
+      <!-- Pain Points -->
+      <div style="padding:16px 22px 0;">
+        <div style="font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px;">Pain Points Detected</div>
+        <div id="drawerPains" style="font-size:12px;color:#374151;line-height:1.7;"></div>
+      </div>
+
+      <!-- Cold Call Script -->
+      <div style="padding:16px 22px 0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div style="font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.8px;">&#128222; Cold Call Script</div>
+          <button id="copyPitchBtn" onclick="copyDrawerText('drawerPitch','copyPitchBtn')" style="background:#006D77;color:white;border:none;padding:3px 10px;border-radius:6px;font-size:11px;cursor:pointer;">&#128203; Copy</button>
+        </div>
+        <div id="drawerPitch" style="background:#F0F9FA;border:1px solid #B2DFDB;border-radius:8px;padding:12px;font-size:12px;color:#1C4A4E;line-height:1.75;white-space:pre-wrap;"></div>
+      </div>
+
+      <!-- WhatsApp Message -->
+      <div style="padding:16px 22px 0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div style="font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.8px;">&#128172; WhatsApp Message</div>
+          <button id="copyWaBtn" onclick="copyDrawerText('drawerWhatsapp','copyWaBtn')" style="background:#25D366;color:white;border:none;padding:3px 10px;border-radius:6px;font-size:11px;cursor:pointer;">&#128203; Copy</button>
+        </div>
+        <div id="drawerWhatsapp" style="background:#F1FFF6;border:1px solid #A5D6A7;border-radius:8px;padding:12px;font-size:12px;color:#1B5E20;line-height:1.75;white-space:pre-wrap;"></div>
+      </div>
+
+      <!-- Email Template -->
+      <div style="padding:16px 22px 24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div style="font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.8px;">&#128140; Follow-Up Email</div>
+          <button id="copyEmailBtn" onclick="copyDrawerText('drawerEmail','copyEmailBtn')" style="background:#3B82F6;color:white;border:none;padding:3px 10px;border-radius:6px;font-size:11px;cursor:pointer;">&#128203; Copy</button>
+        </div>
+        <div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:4px;">Subject: <span id="drawerEmailSubject" style="color:#1D4ED8;"></span></div>
+        <div id="drawerEmail" style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:12px;font-size:12px;color:#1E3A5F;line-height:1.75;white-space:pre-wrap;"></div>
+      </div>
     </div>
 
     <!-- ========================================================================= -->
@@ -142,16 +211,16 @@
             <input id="seoWebsiteUrl" type="text" placeholder="e.g. https://rubyhall.com" />
           </div>
 
-          <div class="section-label" style="margin-top:16px;margin-bottom:10px;">⚔️ COMPETITOR COMPARISON <span class="optional">(OPTIONAL)</span></div>
+          <div class="section-label" style="margin-top:16px;margin-bottom:10px;">⚔️ COMPETITOR COMPARISON <span class="optional">(AUTO-DISCOVERS IF BLANK)</span></div>
 
           <div class="form-group">
-            <label for="seoCompName">Competitor Business Name</label>
-            <input id="seoCompName" type="text" placeholder="e.g. Jehangir Hospital" />
+            <label for="seoCompName">Competitor Business Name <span class="optional">(Leave blank to auto-find top competitor)</span></label>
+            <input id="seoCompName" type="text" placeholder="e.g. Jehangir Hospital (or leave blank to auto-discover)" />
           </div>
 
           <div class="form-group">
-            <label for="seoCompUrl">Competitor Website URL</label>
-            <input id="seoCompUrl" type="text" placeholder="e.g. http://www.jehangirhospital.com/" />
+            <label for="seoCompUrl">Competitor Website URL <span class="optional">(Leave blank to auto-find website)</span></label>
+            <input id="seoCompUrl" type="text" placeholder="e.g. https://jehangirhospital.com (or leave blank)" />
           </div>
 
           <button id="seoBtn" class="btn-primary" onclick="startSeoAnalysis()">

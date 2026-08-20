@@ -105,7 +105,17 @@ class UnifiedApp(tk.Tk):
         self._sc_no_web_var = tk.BooleanVar(value=False)
         cb = tk.Checkbutton(left, text="Only scrape businesses WITHOUT website", variable=self._sc_no_web_var,
                             font=("Segoe UI", 9, "bold"), bg=CARD_BG, fg="#B91C1C", activebackground=CARD_BG)
-        cb.pack(anchor="w", pady=(12, 10))
+        cb.pack(anchor="w", pady=(8, 2))
+
+        self._sc_only_247_var = tk.BooleanVar(value=False)
+        cb2 = tk.Checkbutton(left, text="🕒 Only scrape businesses open 24/7", variable=self._sc_only_247_var,
+                             font=("Segoe UI", 9, "bold"), bg=CARD_BG, fg="#047857", activebackground=CARD_BG)
+        cb2.pack(anchor="w", pady=(2, 2))
+
+        self._sc_only_hot_var = tk.BooleanVar(value=False)
+        cb3 = tk.Checkbutton(left, text="🔥 Only export HOT LEADS (High Intent)", variable=self._sc_only_hot_var,
+                             font=("Segoe UI", 9, "bold"), bg=CARD_BG, fg="#B91C1C", activebackground=CARD_BG)
+        cb3.pack(anchor="w", pady=(2, 10))
 
         self._sc_btn = tk.Button(left, text="🚀 Start Scraping Leads", font=("Segoe UI", 11, "bold"),
                                  bg=TEAL, fg="white", activebackground=TEAL_DARK, relief="flat", cursor="hand2", pady=10,
@@ -141,7 +151,7 @@ class UnifiedApp(tk.Tk):
         tv_scroll_y = tk.Scrollbar(tv_frame, orient=tk.VERTICAL)
         tv_scroll_x = tk.Scrollbar(tv_frame, orient=tk.HORIZONTAL)
 
-        cols = ("Name", "Rating", "Reviews", "Phone", "Address", "Website")
+        cols = ("Name", "Intent", "Tier", "Rating", "Reviews", "Call Window", "Phone", "Website")
         self._sc_tree = ttk.Treeview(tv_frame, columns=cols, show="headings",
                                      yscrollcommand=tv_scroll_y.set, xscrollcommand=tv_scroll_x.set)
         tv_scroll_y.config(command=self._sc_tree.yview)
@@ -151,19 +161,27 @@ class UnifiedApp(tk.Tk):
         tv_scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
         self._sc_tree.pack(fill=tk.BOTH, expand=True)
 
-        col_widths = {"Name": 200, "Rating": 60, "Reviews": 70, "Phone": 120, "Address": 240, "Website": 180}
+        col_widths = {"Name": 170, "Intent": 115, "Tier": 140, "Rating": 50, "Reviews": 55, "Call Window": 140, "Phone": 95, "Website": 140}
         for c in cols:
             self._sc_tree.heading(c, text=c)
-            self._sc_tree.column(c, width=col_widths.get(c, 100), anchor="w" if c in ("Name", "Address", "Website") else "center")
+            self._sc_tree.column(c, width=col_widths.get(c, 100), anchor="w" if c in ("Name", "Website") else "center")
 
-        self._sc_file = ""
+        hint = tk.Label(bot, text="💡 Double-click any row to view Cold Call Script, WhatsApp & Email Templates",
+                        font=("Segoe UI", 8), bg=CARD_BG, fg=MUTED)
+        hint.pack(anchor="w", pady=(4, 0))
+        self._sc_tree.bind("<Double-1>", self._on_lead_double_click)
+
+        self._sc_file  = ""
         self._sc_running = False
+        self._sc_leads = []
 
     def _start_scraping(self):
         cat = self._sc_cat_var.get().strip()
         city = self._sc_city_var.get().strip()
         max_str = self._sc_max_var.get().strip().lower()
         no_web = self._sc_no_web_var.get()
+        only_247 = self._sc_only_247_var.get()
+        only_hot = self._sc_only_hot_var.get()
 
         if not cat or not city or cat.startswith("e.g.") or city.startswith("e.g."):
             messagebox.showwarning("Missing Inputs", "Please enter Category and City.")
@@ -190,19 +208,23 @@ class UnifiedApp(tk.Tk):
 
         def worker():
             try:
-                leads = scrape_google_maps(cat, city, max_res, progress_callback=log_cb, only_no_website=no_web)
+                leads = scrape_google_maps(cat, city, max_res, progress_callback=log_cb, only_no_website=no_web, only_24_7=only_247, only_hot_leads=only_hot)
                 if leads:
                     fp = export_leads(leads, cat, city)
                     log_cb(f"\n[DONE] 🎉 Saved {len(leads)} leads to: {fp}")
 
                     # Populate treeview
+                    self._sc_leads = leads
                     for lead in leads:
+                        call_win = (lead.get("Best Call Window") or "N/A").split("(")[0].strip()
                         self._sc_tree.insert("", tk.END, values=(
                             lead.get("Business Name", ""),
+                            lead.get("Conversion Score", "N/A"),
+                            lead.get("Tier", "N/A"),
                             lead.get("Rating", "N/A"),
                             lead.get("Number of Reviews", "N/A"),
+                            call_win,
                             lead.get("Phone Number", "N/A"),
-                            lead.get("Address", "N/A"),
                             lead.get("Website", "N/A")
                         ))
 
@@ -217,9 +239,71 @@ class UnifiedApp(tk.Tk):
 
         threading.Thread(target=worker, daemon=True).start()
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # TAB 2 — LOCAL SEO & COMPETITOR ANALYZER
-    # ══════════════════════════════════════════════════════════════════════════
+    def _on_lead_double_click(self, event):
+        sel = self._sc_tree.selection()
+        if not sel:
+            return
+        idx = self._sc_tree.index(sel[0])
+        if not hasattr(self, '_sc_leads') or idx >= len(self._sc_leads):
+            return
+        self._show_lead_scripts(self._sc_leads[idx])
+
+    def _show_lead_scripts(self, lead):
+        win = tk.Toplevel(self)
+        win.title(f"Scripts: {lead.get('Business Name', '')}")
+        win.geometry("700x640")
+        win.configure(bg=CARD_BG)
+        win.grab_set()
+
+        # Header
+        hdr = tk.Frame(win, bg=TEAL, height=52)
+        hdr.pack(fill=tk.X)
+        hdr.pack_propagate(False)
+        tk.Label(hdr, text=f"  💼 {lead.get('Business Name', '')}", font=("Segoe UI", 12, "bold"),
+                 bg=TEAL, fg="white").pack(side=tk.LEFT, padx=12)
+        tk.Label(hdr, text=lead.get('Conversion Score', ''), font=("Segoe UI", 10, "bold"),
+                 bg=TEAL, fg="#FCD34D").pack(side=tk.LEFT)
+
+        info = tk.Frame(win, bg="#F0F9FA", pady=6, padx=14)
+        info.pack(fill=tk.X)
+        tier = lead.get('Tier', '')
+        call = lead.get('Best Call Window', 'N/A')
+        tk.Label(info, text=f"{tier}   |   🕐 Best Call: {call}", font=("Segoe UI", 9),
+                 bg="#F0F9FA", fg=TEAL_DARK).pack(anchor="w")
+        pains = lead.get('All Pain Points', 'N/A')
+        tk.Label(info, text=f"⚠️ Pain Points: {pains}", font=("Segoe UI", 8),
+                 bg="#F0F9FA", fg="#991B1B", wraplength=660, justify="left").pack(anchor="w", pady=(2, 0))
+
+        nb = ttk.Notebook(win)
+        nb.pack(fill=tk.BOTH, expand=True, padx=10, pady=8)
+
+        def make_tab(title, content):
+            frm = tk.Frame(nb, bg=CARD_BG)
+            nb.add(frm, text=title)
+            txt = tk.Text(frm, font=("Segoe UI", 9), bg="#FAFCFD", fg=TEXT,
+                          relief="flat", wrap=tk.WORD, padx=10, pady=8)
+            txt.insert(tk.END, content or "N/A")
+            txt.config(state=tk.DISABLED)
+            sb = tk.Scrollbar(frm, command=txt.yview)
+            txt.config(yscrollcommand=sb.set)
+            sb.pack(side=tk.RIGHT, fill=tk.Y)
+            txt.pack(fill=tk.BOTH, expand=True)
+            def copy_it():
+                win.clipboard_clear()
+                win.clipboard_append(content or "")
+                btn.config(text="✅ Copied!")
+                win.after(2000, lambda: btn.config(text=f"📋 Copy {title}"))
+            btn = tk.Button(frm, text=f"📋 Copy {title}", command=copy_it,
+                            font=("Segoe UI", 9, "bold"), bg=TEAL, fg="white",
+                            relief="flat", cursor="hand2", pady=4)
+            btn.pack(fill=tk.X, padx=0)
+
+        make_tab("📞 Cold Call Script", lead.get("Cold Call Pitch Script", ""))
+        make_tab("💬 WhatsApp", lead.get("WhatsApp Message", ""))
+        email_full = f"SUBJECT: {lead.get('Email Subject', '')}\n\n{lead.get('Follow-Up Email', '')}"
+        make_tab("📧 Follow-Up Email", email_full)
+
+
     def _build_seo_tab(self):
         main = tk.Frame(self._tab_seo, bg=BG)
         main.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -254,10 +338,10 @@ class UnifiedApp(tk.Tk):
         self._seo_loc_var, _  = make_entry("Location *", "e.g. Pune")
         self._seo_url_var, _  = make_entry("Client Website (optional)", "https://")
 
-        tk.Label(left, text="⚔️ COMPETITOR COMPARISON (OPTIONAL)", font=("Segoe UI", 8, "bold"), bg=CARD_BG, fg=TEAL).pack(anchor="w", pady=(10, 2))
+        tk.Label(left, text="⚔️ COMPETITOR COMPARISON (AUTO-DISCOVERS IF BLANK)", font=("Segoe UI", 8, "bold"), bg=CARD_BG, fg=TEAL).pack(anchor="w", pady=(10, 2))
 
-        self._seo_comp_name_var, _ = make_entry("Competitor Name", "e.g. Jehangir Hospital")
-        self._seo_comp_url_var, _  = make_entry("Competitor Website", "https://")
+        self._seo_comp_name_var, _ = make_entry("Competitor Name (or leave blank to auto-discover)", "e.g. Jehangir Hospital (or leave blank)")
+        self._seo_comp_url_var, _  = make_entry("Competitor Website (or leave blank)", "https:// (or leave blank)")
 
         self._seo_btn = tk.Button(left, text="🔍 Analyze & Compare", font=("Segoe UI", 11, "bold"),
                                   bg=TEAL, fg="white", activebackground=TEAL_DARK, relief="flat", cursor="hand2", pady=10,
